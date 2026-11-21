@@ -6,6 +6,7 @@
  */
 export const env = {
   apiBaseUrl: 'https://fintwin.freedevs.tech/api/v1',
-  googleWebClientId: '',
+  googleWebClientId:
+    '177065050613-qi3c5kktp0n6ha9pmukpqllnbcmuo9hu.apps.googleusercontent.com',
   deviceName: 'fintwin-mobile',
 } as const;
