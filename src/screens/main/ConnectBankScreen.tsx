@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -8,6 +8,10 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatusBadge } from '../../components/StatusBadge';
 import { extractApiErrorMessage } from '../../services/api';
 import { openFinanceService } from '../../services/openFinanceService';
+import {
+  buildPluggyConnectHtml,
+  parsePluggyConnectMessage,
+} from '../../utils/pluggyConnectHtml';
 
 export function ConnectBankScreen() {
   const [connectToken, setConnectToken] = useState<string | null>(null);
@@ -53,18 +57,26 @@ export function ConnectBankScreen() {
   };
 
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data) as {
-        event?: string;
-        item?: { id?: string };
-      };
-      if (data.event === 'onSuccess' && data.item?.id) {
-        setConnectToken(null);
-        setPluggyItemId(data.item.id);
-        handleSyncItem(data.item.id);
-      }
-    } catch {
-      // Ignore unrelated postMessage payloads from WebView.
+    const parsed = parsePluggyConnectMessage(event.nativeEvent.data);
+    if (!parsed) {
+      return;
+    }
+
+    if (parsed.event === 'onSuccess') {
+      setConnectToken(null);
+      setPluggyItemId(parsed.itemId);
+      handleSyncItem(parsed.itemId);
+      return;
+    }
+
+    if (parsed.event === 'onError') {
+      setConnectToken(null);
+      setErrorMessage(parsed.message);
+      return;
+    }
+
+    if (parsed.event === 'onClose') {
+      setConnectToken(null);
     }
   };
 
@@ -83,11 +95,32 @@ export function ConnectBankScreen() {
         </View>
         <WebView
           source={{
-            uri: `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(
-              connectToken,
-            )}`,
+            html: buildPluggyConnectHtml(connectToken, true),
+            baseUrl: 'https://connect.pluggy.ai',
           }}
+          javaScriptEnabled
+          domStorageEnabled
+          thirdPartyCookiesEnabled
+          sharedCookiesEnabled
+          originWhitelist={['*']}
           onMessage={handleWebViewMessage}
+          onOpenWindow={event => {
+            if (event.nativeEvent.targetUrl) {
+              Linking.openURL(event.nativeEvent.targetUrl).catch(() => {});
+            }
+          }}
+          onShouldStartLoadWithRequest={request => {
+            const isHttp =
+              request.url.startsWith('http://') ||
+              request.url.startsWith('https://') ||
+              request.url.startsWith('about:') ||
+              request.url.startsWith('data:');
+            if (!isHttp) {
+              Linking.openURL(request.url).catch(() => {});
+              return false;
+            }
+            return true;
+          }}
           className="flex-1 bg-surface"
         />
       </ScreenContainer>
