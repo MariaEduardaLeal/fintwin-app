@@ -8,7 +8,7 @@ describe('pluggyConnectHtml', () => {
     const html = buildPluggyConnectHtml('tok_<script>alert(1)</script>', true);
 
     expect(html).toContain(
-      'https://cdn.pluggy.ai/connect/v2/pluggy-connect.js',
+      'https://cdn.pluggy.ai/pluggy-connect/v2.7.0/pluggy-connect.js',
     );
     expect(html).toContain('tok_\\u003cscript>alert(1)\\u003c/script>');
     expect(html).toContain('onSuccess');
