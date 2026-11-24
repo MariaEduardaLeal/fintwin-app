@@ -77,6 +77,11 @@ export function ConnectBankScreen() {
 
     if (parsed.event === 'onClose') {
       setConnectToken(null);
+      return;
+    }
+
+    if (parsed.event === 'onOpenExternalUrl') {
+      Linking.openURL(parsed.url).catch(() => {});
     }
   };
 
@@ -99,6 +104,8 @@ export function ConnectBankScreen() {
             baseUrl: 'https://connect.pluggy.ai',
           }}
           javaScriptEnabled
+          javaScriptCanOpenWindowsAutomatically
+          setSupportMultipleWindows
           domStorageEnabled
           thirdPartyCookiesEnabled
           sharedCookiesEnabled

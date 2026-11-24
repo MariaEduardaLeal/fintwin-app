@@ -1,7 +1,8 @@
 export type PluggyWebViewEvent =
   | { event: 'onSuccess'; itemId: string }
   | { event: 'onError'; message: string }
-  | { event: 'onClose' };
+  | { event: 'onClose' }
+  | { event: 'onOpenExternalUrl'; url: string };
 
 /**
  * Render an embedded HTML launcher that initializes Pluggy Connect v2 in React Native WebView
@@ -52,6 +53,16 @@ export function buildPluggyConnectHtml(
           window.ReactNativeWebView.postMessage(JSON.stringify(payload));
         }
       }
+
+      var originalOpen = window.open;
+      window.open = function (url) {
+        if (typeof url === 'string' && url.trim() !== '') {
+          sendToApp({ event: 'onOpenExternalUrl', url: url.trim() });
+        } else if (typeof originalOpen === 'function') {
+          return originalOpen.apply(window, arguments);
+        }
+        return { closed: false, focus: function () {}, close: function () {} };
+      };
 
       if (typeof window.PluggyConnect !== 'function') {
         sendToApp({
@@ -107,6 +118,7 @@ export function parsePluggyConnectMessage(raw: string): PluggyWebViewEvent | nul
       item?: { id?: unknown };
       payload?: { item?: { id?: unknown } };
       message?: unknown;
+      url?: unknown;
     };
 
     const rawItemId =
@@ -132,6 +144,14 @@ export function parsePluggyConnectMessage(raw: string): PluggyWebViewEvent | nul
 
     if (data.event === 'onClose' || data.type === 'CLOSE') {
       return { event: 'onClose' };
+    }
+
+    if (
+      data.event === 'onOpenExternalUrl' &&
+      typeof data.url === 'string' &&
+      data.url.trim() !== ''
+    ) {
+      return { event: 'onOpenExternalUrl', url: data.url.trim() };
     }
 
     return null;

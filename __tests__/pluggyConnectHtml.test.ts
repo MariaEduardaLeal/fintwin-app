@@ -14,6 +14,7 @@ describe('pluggyConnectHtml', () => {
     expect(html).toContain('onSuccess');
     expect(html).toContain('onError');
     expect(html).toContain('onClose');
+    expect(html).toContain('onOpenExternalUrl');
   });
 
   it('parses onSuccess with direct itemId or legacy nested item.id', () => {
@@ -40,6 +41,18 @@ describe('pluggyConnectHtml', () => {
     expect(
       parsePluggyConnectMessage(JSON.stringify({ event: 'onClose' })),
     ).toEqual({ event: 'onClose' });
+
+    expect(
+      parsePluggyConnectMessage(
+        JSON.stringify({
+          event: 'onOpenExternalUrl',
+          url: 'https://meu.pluggy.ai/oauth',
+        }),
+      ),
+    ).toEqual({
+      event: 'onOpenExternalUrl',
+      url: 'https://meu.pluggy.ai/oauth',
+    });
 
     expect(parsePluggyConnectMessage('{not-json')).toBeNull();
   });
