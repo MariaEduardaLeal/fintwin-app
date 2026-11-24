@@ -73,3 +73,44 @@ export interface DashboardSummaryPayload {
   bank_accounts: DashboardBankAccount[];
   credit_cards: DashboardCreditCard[];
 }
+
+export interface CategoryItem {
+  id: number;
+  name: string;
+  slug: string;
+  type: string;
+  color: string | null;
+  icon: string | null;
+  is_essential: boolean;
+}
+
+export interface BankTransactionItem {
+  id: number;
+  description: string;
+  notes: string | null;
+  amount: number;
+  type: 'income' | 'expense' | 'transfer';
+  transaction_date: string;
+  status: string;
+  payment_method: string | null;
+  is_category_manual: boolean;
+  category: CategoryItem | null;
+}
+
+export interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface BankAccountTransactionsPayload {
+  bank_account: DashboardBankAccount;
+  transactions: BankTransactionItem[];
+  pagination: PaginationMeta;
+}
+
+export interface UpdateTransactionPayload {
+  notes?: string | null;
+  category_id?: number | null;
+}

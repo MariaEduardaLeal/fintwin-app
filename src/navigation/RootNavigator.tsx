@@ -11,10 +11,12 @@ import { ActivityIndicator, View } from 'react-native';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { AdvisorScreen } from '../screens/main/AdvisorScreen';
+import { BankTransactionsScreen } from '../screens/main/BankTransactionsScreen';
 import { ConnectBankScreen } from '../screens/main/ConnectBankScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { TimelineScreen } from '../screens/main/TimelineScreen';
 import { useAuthStore } from '../store/useAuthStore';
+import type { DashboardBankAccount } from '../types/api';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -28,7 +30,13 @@ export type MainTabParamList = {
   ConnectBank: undefined;
 };
 
+export type MainStackParamList = {
+  MainTabs: undefined;
+  BankTransactions: { bankAccount: DashboardBankAccount };
+};
+
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const MainStack = createNativeStackNavigator<MainStackParamList>();
 const MainTabs = createBottomTabNavigator<MainTabParamList>();
 
 function DashboardIcon({ color, size }: { color: string; size: number }) {
@@ -61,7 +69,7 @@ function AuthNavigator() {
   );
 }
 
-function MainNavigator() {
+function MainTabsNavigator() {
   return (
     <MainTabs.Navigator
       screenOptions={{
@@ -107,6 +115,23 @@ function MainNavigator() {
         }}
       />
     </MainTabs.Navigator>
+  );
+}
+
+function MainNavigator() {
+  return (
+    <MainStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: '#090D16' },
+      }}
+    >
+      <MainStack.Screen name="MainTabs" component={MainTabsNavigator} />
+      <MainStack.Screen
+        name="BankTransactions"
+        component={BankTransactionsScreen}
+      />
+    </MainStack.Navigator>
   );
 }
 

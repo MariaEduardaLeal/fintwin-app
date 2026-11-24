@@ -1,25 +1,23 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatusBadge } from '../../components/StatusBadge';
+import type { MainStackParamList } from '../../navigation/RootNavigator';
 import { extractApiErrorMessage } from '../../services/api';
 import { authService } from '../../services/authService';
 import { openFinanceService } from '../../services/openFinanceService';
 import { useAuthStore } from '../../store/useAuthStore';
 import type { DashboardSummaryPayload, HealthCheckPayload } from '../../types/api';
-
-function formatBrl(amount: number): string {
-  const safe = Number.isFinite(amount) ? amount : 0;
-  const negative = safe < 0;
-  const [intPart, decPart] = Math.abs(safe).toFixed(2).split('.');
-  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${negative ? '-' : ''}R$ ${grouped},${decPart}`;
-}
+import { formatBrl } from '../../utils/currency';
 
 export function DashboardScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user, clearSession } = useAuthStore();
   const [health, setHealth] = useState<HealthCheckPayload | null>(null);
   const [healthError, setHealthError] = useState(false);
@@ -144,12 +142,23 @@ export function DashboardScreen() {
 
       {summary && summary.bank_accounts.length > 0 ? (
         <Card className="gap-3">
-          <Text className="text-sm font-semibold text-slate-200">
-            Contas Bancárias
-          </Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm font-semibold text-slate-200">
+              Contas Bancárias
+            </Text>
+            <Text className="text-[11px] text-slate-400">
+              Toque para ver transações
+            </Text>
+          </View>
           {summary.bank_accounts.map(account => (
-            <View
+            <TouchableOpacity
               key={account.id}
+              accessibilityRole="button"
+              onPress={() =>
+                navigation.navigate('BankTransactions', {
+                  bankAccount: account,
+                })
+              }
               className="flex-row items-center justify-between border-t border-surface-border pt-2.5">
               <View className="flex-1 pr-3">
                 <Text className="text-sm font-medium text-slate-100">
@@ -157,10 +166,13 @@ export function DashboardScreen() {
                 </Text>
                 <Text className="text-xs text-slate-400">{account.name}</Text>
               </View>
-              <Text className="text-sm font-semibold text-emerald-300">
-                {formatBrl(account.balance)}
-              </Text>
-            </View>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm font-semibold text-emerald-300">
+                  {formatBrl(account.balance)}
+                </Text>
+                <ChevronRight color="#64748B" size={16} />
+              </View>
+            </TouchableOpacity>
           ))}
         </Card>
       ) : null}
