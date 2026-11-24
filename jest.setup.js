@@ -36,6 +36,10 @@ jest.mock('react-native-webview', () => ({
   WebView: 'WebView',
 }));
 
+jest.mock('react-native-pluggy-connect', () => ({
+  PluggyConnect: 'PluggyConnect',
+}));
+
 jest.mock('react-native-reanimated', () =>
   require('react-native-reanimated/mock'),
 );

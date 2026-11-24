@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Linking, Text, View } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { Text, View } from 'react-native';
+import { PluggyConnect } from 'react-native-pluggy-connect';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -8,10 +8,6 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatusBadge } from '../../components/StatusBadge';
 import { extractApiErrorMessage } from '../../services/api';
 import { openFinanceService } from '../../services/openFinanceService';
-import {
-  buildPluggyConnectHtml,
-  parsePluggyConnectMessage,
-} from '../../utils/pluggyConnectHtml';
 
 export function ConnectBankScreen() {
   const [connectToken, setConnectToken] = useState<string | null>(null);
@@ -56,35 +52,6 @@ export function ConnectBankScreen() {
     }
   };
 
-  const handleWebViewMessage = (event: WebViewMessageEvent) => {
-    const parsed = parsePluggyConnectMessage(event.nativeEvent.data);
-    if (!parsed) {
-      return;
-    }
-
-    if (parsed.event === 'onSuccess') {
-      setConnectToken(null);
-      setPluggyItemId(parsed.itemId);
-      handleSyncItem(parsed.itemId);
-      return;
-    }
-
-    if (parsed.event === 'onError') {
-      setConnectToken(null);
-      setErrorMessage(parsed.message);
-      return;
-    }
-
-    if (parsed.event === 'onClose') {
-      setConnectToken(null);
-      return;
-    }
-
-    if (parsed.event === 'onOpenExternalUrl') {
-      Linking.openURL(parsed.url).catch(() => {});
-    }
-  };
-
   if (connectToken) {
     return (
       <ScreenContainer scroll={false} className="gap-3 px-0 py-0">
@@ -98,38 +65,29 @@ export function ConnectBankScreen() {
             onPress={() => setConnectToken(null)}
           />
         </View>
-        <WebView
-          source={{
-            html: buildPluggyConnectHtml(connectToken, true),
-            baseUrl: 'https://connect.pluggy.ai',
-          }}
-          javaScriptEnabled
-          javaScriptCanOpenWindowsAutomatically
-          setSupportMultipleWindows
-          domStorageEnabled
-          thirdPartyCookiesEnabled
-          sharedCookiesEnabled
-          originWhitelist={['*']}
-          onMessage={handleWebViewMessage}
-          onOpenWindow={event => {
-            if (event.nativeEvent.targetUrl) {
-              Linking.openURL(event.nativeEvent.targetUrl).catch(() => {});
-            }
-          }}
-          onShouldStartLoadWithRequest={request => {
-            const isHttp =
-              request.url.startsWith('http://') ||
-              request.url.startsWith('https://') ||
-              request.url.startsWith('about:') ||
-              request.url.startsWith('data:');
-            if (!isHttp) {
-              Linking.openURL(request.url).catch(() => {});
-              return false;
-            }
-            return true;
-          }}
-          className="flex-1 bg-surface"
-        />
+        <View className="flex-1">
+          <PluggyConnect
+            connectToken={connectToken}
+            includeSandbox
+            language="pt"
+            forceOauthInBrowser={false}
+            onSuccess={data => {
+              setConnectToken(null);
+              const itemId = data?.item?.id;
+              if (itemId) {
+                setPluggyItemId(itemId);
+                handleSyncItem(itemId);
+              }
+            }}
+            onError={error => {
+              setConnectToken(null);
+              setErrorMessage(
+                error?.message || 'Falha ao conectar instituição na Pluggy.',
+              );
+            }}
+            onClose={() => setConnectToken(null)}
+          />
+        </View>
       </ScreenContainer>
     );
   }
