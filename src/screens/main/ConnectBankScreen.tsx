@@ -70,7 +70,7 @@ export function ConnectBankScreen() {
             connectToken={connectToken}
             includeSandbox
             language="pt"
-            forceOauthInBrowser={false}
+            forceOauthInBrowser
             onSuccess={data => {
               setConnectToken(null);
               const itemId = data?.item?.id;

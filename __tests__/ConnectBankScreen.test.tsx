@@ -47,7 +47,7 @@ describe('ConnectBankScreen', () => {
     );
     expect(pluggyWidget).toBeDefined();
     expect(pluggyWidget?.props.connectToken).toBe('connect-token-123');
-    expect(pluggyWidget?.props.forceOauthInBrowser).toBe(false);
+    expect(pluggyWidget?.props.forceOauthInBrowser).toBe(true);
 
     await ReactTestRenderer.act(async () => {
       pluggyWidget?.props.onSuccess({
