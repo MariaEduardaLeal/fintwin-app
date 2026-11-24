@@ -1,11 +1,19 @@
 import type {
   ApiEnvelope,
+  DashboardSummaryPayload,
   OpenFinanceSyncPayload,
   PluggyConnectTokenPayload,
 } from '../types/api';
 import { apiClient } from './api';
 
 export const openFinanceService = {
+  async fetchDashboardSummary(): Promise<DashboardSummaryPayload> {
+    const { data } = await apiClient.get<ApiEnvelope<DashboardSummaryPayload>>(
+      '/dashboard/summary',
+    );
+    return data.data;
+  },
+
   async createConnectToken(itemId?: string): Promise<PluggyConnectTokenPayload> {
     const { data } = await apiClient.post<ApiEnvelope<PluggyConnectTokenPayload>>(
       '/pluggy/connect-token',

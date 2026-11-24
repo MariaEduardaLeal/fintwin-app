@@ -38,3 +38,38 @@ export interface OpenFinanceSyncPayload {
   queues: string[];
   requested_at: string;
 }
+
+export interface DashboardBankAccount {
+  id: number;
+  institution_name: string;
+  name: string;
+  type: string;
+  currency_code: string;
+  balance: number;
+  last_synced_at: string | null;
+}
+
+export interface DashboardCreditCard {
+  id: number;
+  name: string;
+  brand: string | null;
+  last_four_digits: string | null;
+  credit_limit: number;
+  available_limit: number;
+  current_invoice_amount: number;
+  current_invoice_due_date: string | null;
+  last_synced_at: string | null;
+}
+
+export interface DashboardSummaryPayload {
+  total_liquid_balance: number;
+  total_credit_limit: number;
+  total_credit_used: number;
+  current_month_invoices_total: number;
+  current_month_installments: number;
+  accounts_count: number;
+  credit_cards_count: number;
+  last_synced_at: string | null;
+  bank_accounts: DashboardBankAccount[];
+  credit_cards: DashboardCreditCard[];
+}

@@ -1,39 +1,63 @@
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatusBadge } from '../../components/StatusBadge';
+import { extractApiErrorMessage } from '../../services/api';
 import { authService } from '../../services/authService';
+import { openFinanceService } from '../../services/openFinanceService';
 import { useAuthStore } from '../../store/useAuthStore';
-import type { HealthCheckPayload } from '../../types/api';
+import type { DashboardSummaryPayload, HealthCheckPayload } from '../../types/api';
+
+function formatBrl(amount: number): string {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const negative = safe < 0;
+  const [intPart, decPart] = Math.abs(safe).toFixed(2).split('.');
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${negative ? '-' : ''}R$ ${grouped},${decPart}`;
+}
 
 export function DashboardScreen() {
   const { user, clearSession } = useAuthStore();
   const [health, setHealth] = useState<HealthCheckPayload | null>(null);
   const [healthError, setHealthError] = useState(false);
+  const [summary, setSummary] = useState<DashboardSummaryPayload | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    authService
-      .fetchHealth()
-      .then(data => {
-        if (active) {
-          setHealth(data);
-          setHealthError(false);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setHealthError(true);
-        }
-      });
+  const loadDashboard = useCallback(async () => {
+    setLoadingSummary(true);
+    setSummaryError(null);
 
-    return () => {
-      active = false;
-    };
+    const [healthResult, summaryResult] = await Promise.allSettled([
+      authService.fetchHealth(),
+      openFinanceService.fetchDashboardSummary(),
+    ]);
+
+    if (healthResult.status === 'fulfilled') {
+      setHealth(healthResult.value);
+      setHealthError(false);
+    } else {
+      setHealthError(true);
+    }
+
+    if (summaryResult.status === 'fulfilled') {
+      setSummary(summaryResult.value);
+    } else {
+      setSummaryError(extractApiErrorMessage(summaryResult.reason));
+    }
+
+    setLoadingSummary(false);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard]),
+  );
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -46,6 +70,9 @@ export function DashboardScreen() {
       setLoggingOut(false);
     }
   };
+
+  const accountsCount = summary?.accounts_count ?? 0;
+  const cardsCount = summary?.credit_cards_count ?? 0;
 
   return (
     <ScreenContainer className="gap-5">
@@ -72,29 +99,97 @@ export function DashboardScreen() {
 
       <Card className="gap-3">
         <Text className="text-xs font-medium uppercase tracking-wider text-slate-400">
-          Simulador "E Se?" (Fase 4 / 7.2)
+          Saldo Total em Contas
         </Text>
-        <Text className="text-3xl font-bold text-slate-50">R$ 0,00</Text>
+        <Text className="text-3xl font-bold text-slate-50">
+          {formatBrl(summary?.total_liquid_balance ?? 0)}
+        </Text>
         <Text className="text-sm leading-5 text-slate-400">
-          Conecte uma instituição via Open Finance na aba Bancos para alimentar seu
-          fluxo de caixa real e desbloquear projeções com cache Redis a 60fps.
+          {accountsCount > 0 || cardsCount > 0
+            ? `${accountsCount} conta(s) e ${cardsCount} cartão(ões) sincronizados via Open Finance.`
+            : 'Conecte uma instituição via Open Finance na aba Bancos para acompanhar seu saldo e faturas reais.'}
         </Text>
+        <Button
+          title="Atualizar dados"
+          variant="secondary"
+          onPress={loadDashboard}
+          loading={loadingSummary}
+        />
       </Card>
+
+      {summaryError ? (
+        <View className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+          <Text className="text-sm text-red-300">{summaryError}</Text>
+        </View>
+      ) : null}
 
       <View className="flex-row gap-3">
         <Card className="flex-1 gap-1.5">
           <Text className="text-xs uppercase tracking-wider text-slate-400">
-            Saldo Líquido
+            Fatura Atual
           </Text>
-          <Text className="text-xl font-bold text-brand-light">R$ 0,00</Text>
+          <Text className="text-xl font-bold text-brand-light">
+            {formatBrl(summary?.current_month_invoices_total ?? 0)}
+          </Text>
         </Card>
         <Card className="flex-1 gap-1.5">
           <Text className="text-xs uppercase tracking-wider text-slate-400">
             Parcelas Mês
           </Text>
-          <Text className="text-xl font-bold text-slate-100">R$ 0,00</Text>
+          <Text className="text-xl font-bold text-slate-100">
+            {formatBrl(summary?.current_month_installments ?? 0)}
+          </Text>
         </Card>
       </View>
+
+      {summary && summary.bank_accounts.length > 0 ? (
+        <Card className="gap-3">
+          <Text className="text-sm font-semibold text-slate-200">
+            Contas Bancárias
+          </Text>
+          {summary.bank_accounts.map(account => (
+            <View
+              key={account.id}
+              className="flex-row items-center justify-between border-t border-surface-border pt-2.5">
+              <View className="flex-1 pr-3">
+                <Text className="text-sm font-medium text-slate-100">
+                  {account.institution_name}
+                </Text>
+                <Text className="text-xs text-slate-400">{account.name}</Text>
+              </View>
+              <Text className="text-sm font-semibold text-emerald-300">
+                {formatBrl(account.balance)}
+              </Text>
+            </View>
+          ))}
+        </Card>
+      ) : null}
+
+      {summary && summary.credit_cards.length > 0 ? (
+        <Card className="gap-3">
+          <Text className="text-sm font-semibold text-slate-200">
+            Cartões de Crédito
+          </Text>
+          {summary.credit_cards.map(card => (
+            <View
+              key={card.id}
+              className="flex-row items-center justify-between border-t border-surface-border pt-2.5">
+              <View className="flex-1 pr-3">
+                <Text className="text-sm font-medium text-slate-100">
+                  {card.name}
+                  {card.last_four_digits ? ` · •••• ${card.last_four_digits}` : ''}
+                </Text>
+                <Text className="text-xs text-slate-400">
+                  Limite: {formatBrl(card.credit_limit)}
+                </Text>
+              </View>
+              <Text className="text-sm font-semibold text-amber-300">
+                {formatBrl(card.current_invoice_amount)}
+              </Text>
+            </View>
+          ))}
+        </Card>
+      ) : null}
 
       <Card className="gap-2">
         <Text className="text-sm font-semibold text-slate-200">
